@@ -5,11 +5,10 @@
  */
 
 /*jshint indent: 2, node:true */
+/*global define */
 
 (function(global, definition) {
-  // No strict to assign to global.make
   'use strict';
-  /*global define */
 
   // CommonJS
   if (typeof exports === 'object') {
