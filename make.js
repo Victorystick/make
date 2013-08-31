@@ -4,9 +4,27 @@
  * version   0.1
  */
 
-/*jslint indent: 2 */
+/*jshint indent: 2, node:true */
 
-(function () {
+(function(global, definition) {
+  // No strict to assign to global.make
+  'use strict';
+  /*global define */
+
+  // CommonJS
+  if (typeof exports === 'object') {
+    module.exports = definition();
+
+  // RequireJS
+  } else if (typeof define === 'function' && define.amd) {
+    define(definition);
+
+  // <script>
+  } else {
+    global.make = definition();
+  }
+
+})(this, function () {
   'use strict';
 
   var makerMeths = {
@@ -101,5 +119,5 @@
     return make(constructor, constructor.prototype);
   };
 
-  this.make = make;
-}.call(typeof exports !== 'undefined' ? exports : window));
+  return make;
+});
