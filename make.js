@@ -102,4 +102,4 @@
   };
 
   this.make = make;
-}.call(window));
+}.call(typeof exports !== 'undefined' ? exports : window));
