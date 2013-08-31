@@ -10,7 +10,7 @@
 (function(global, definition) {
   'use strict';
 
-  // CommonJS
+  // Node
   if (typeof exports === 'object') {
     module.exports = definition();
 
@@ -26,14 +26,35 @@
 })(this, function () {
   'use strict';
 
+  function forEach(arr, func, scope) {
+    if (!arr.length) return;
+
+    arr.forEach(func, scope);
+  }
+
   var makerMeths = {
+    /** @type {boolean} */
+    requireCheckNeeded: true,
+
     /**
      * Constructor function for Makers.
      */
     create: function () {
+      var keys;
+      if (this.requireCheckNeeded && (keys = Object.keys(this.meths))) {
+        if (keys.length) {
+          forEach(keys, function(key) {
+            if (this[key] === make.required) {
+              throw new Error('Required property ' + key + ' not available!');
+            }
+          }, this.meths);
+          this.requireCheckNeeded = false;
+        }
+      }
+
       var o = Object.create(this.meths);
 
-      this.instas.forEach(function (constructor) {
+      forEach(this.instas, function (constructor) {
         constructor.call(o);
       });
 
@@ -47,7 +68,9 @@
       var name, meths = maker.meths;
 
       for (name in meths) {
-        if (meths.hasOwnProperty(name)) {
+        if (meths.hasOwnProperty(name) &&
+            !this.meths.hasOwnProperty(name)
+            || this.meths[name] === make.required) {
           this.meths[name] = meths[name];
         }
       }
@@ -82,14 +105,20 @@
 
   /**
    * Make a new Maker based on the makerMeths.
-   * @param {Function=} constructor
+   * @param {Function|Object=} constructor
    * @param {Object=} methods
    */
   function make(constructor, methods) {
     var maker = Object.create(makerMeths);
 
+    if (typeof constructor === 'object') {
+      methods = constructor;
+      constructor = undefined;
+    }
+
     maker.meths = methods || {};
-    maker.instas = [constructor] || [];
+    maker.instas = constructor ? [constructor] : [];
+    maker.definedProps = [];
 
     return maker;
   }
@@ -118,5 +147,14 @@
     return make(constructor, constructor.prototype);
   };
 
-  return make;
+  /**
+   * Constant object used to define requirements.
+   */
+  make.required = {};
+
+  Object.keys(make).forEach(function(key) {
+    Object.freeze(make[key]);
+  });
+
+  return Object.freeze(make);
 });
