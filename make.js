@@ -7,7 +7,7 @@
 /*jshint indent: 2, node:true */
 /*global define */
 
-(function(global, definition) {
+(function (global, definition) {
   'use strict';
 
   // Node
@@ -26,30 +26,43 @@
 })(this, function () {
   'use strict';
 
+  /**
+   * @param {Array} arr
+   * @param {Function} func
+   * @param {Object=} scope
+   */
   function forEach(arr, func, scope) {
-    if (!arr.length) return;
+    if (!arr.length) {
+      return;
+    }
 
     arr.forEach(func, scope);
   }
 
+  function forOwn(obj, func, scope) {
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        func.call(scope, key, obj[key]);
+      }
+    }
+  }
+
+  // Arguments -> Array
+  function toArray(args) {
+    return Array.prototype.slice.call(args);
+  }
+
   var makerMeths = {
     /** @type {boolean} */
-    requireCheckNeeded: true,
+    requirementsChecked: false,
 
     /**
      * Constructor function for Makers.
+     * @return {Object}
      */
     create: function () {
-      var keys;
-      if (this.requireCheckNeeded && (keys = Object.keys(this.meths))) {
-        if (keys.length) {
-          forEach(keys, function(key) {
-            if (this[key] === make.required) {
-              throw new Error('Required property ' + key + ' not available!');
-            }
-          }, this.meths);
-          this.requireCheckNeeded = false;
-        }
+      if (!this.requirementsChecked) {
+        validateRequirements(this);
       }
 
       var o = Object.create(this.meths);
@@ -62,23 +75,30 @@
     },
 
     /**
-     * Inherit from other Maker.
+     * Inherit from other Makers.
+     * @param {...Maker} makers
      */
-    inherit: function (maker) {
-      var name, meths = maker.meths;
+    inherit: function () {
+      var meths;
 
-      for (name in meths) {
-        if (meths.hasOwnProperty(name) &&
-            !this.meths.hasOwnProperty(name)
-            || this.meths[name] === make.required) {
-          this.meths[name] = meths[name];
+      toArray(arguments).forEach(function (maker) {
+        if (!maker) {
+          throw new Error('Maker undefined!')
         }
-      }
+        meths = maker.meths;
 
-      maker.instas.forEach(function (func) {
-        if (this.instas.indexOf(func) === -1) {
-          this.instas.push(func);
-        }
+        forOwn(meths, function (name, meth) {
+          if (!this.meths.hasOwnProperty(name) ||
+              isRequirement(this.meths[name])) {
+            this.meths[name] = meth;
+          }
+        }, this);
+
+        forEach(maker.instas, function (func) {
+          if (this.instas.indexOf(func) === -1) {
+            this.instas.unshift(func);
+          }
+        }, this);
       }, this);
 
       return this;
@@ -86,6 +106,8 @@
 
     /**
      * Add method to instances.
+     * @param {string} name
+     * @param {Function} func
      */
     method: function (name, func) {
       this.meths[name] = func;
@@ -107,6 +129,7 @@
    * Make a new Maker based on the makerMeths.
    * @param {Function|Object=} constructor
    * @param {Object=} methods
+   * @return {Maker}
    */
   function make(constructor, methods) {
     var maker = Object.create(makerMeths);
@@ -125,36 +148,73 @@
 
   /**
    * Makes a new Maker which is a mixin of the given Makers.
+   * @return {...Maker} makers
+   * @return {Maker}
    */
   make.mixin = function () {
-    var mixins = Array.prototype.slice.call(arguments),
-      i,
-      o = make();
-
-    for (i in mixins) {
-      if (mixins.hasOwnProperty(i)) {
-        o.inherit(mixins[i]);
-      }
-    }
-
-    return o;
+    return make().inherit(arguments);
   };
 
   /**
    * @param {Function} constructor
+   * @return {Maker}
    */
-  make.fromConstructor = function(constructor) {
+  make.fromConstructor = function (constructor) {
     return make(constructor, constructor.prototype);
   };
 
+  // REQUIREMENTS
   /**
-   * Constant object used to define requirements.
+   * @throws An Error if the required key is not defined.
    */
-  make.required = {};
+  function validateRequirements(maker) {
+    var keys = Object.keys(maker.meths);
 
-  Object.keys(make).forEach(function(key) {
-    Object.freeze(make[key]);
-  });
+    if (keys.length) {
+      forEach(keys, function (key) {
+        var val = this[key];
+        if (isRequirement(val)) {
+          throw new Error("Required " + val.type + " '" +
+            key + "' not available!");
+        }
+      }, maker.meths);
+    }
+
+    maker.requirementsChecked = true;
+  }
+
+  /**
+   * @return {boolean}
+   */
+  function isRequirement(req) {
+    return req === Object(req) && (req === requirement ||
+      Object.getPrototypeOf(req) === requirement);
+  }
+
+  /**
+   * Requirement constructor
+   * @param {string} type
+   */
+  function requirement(type) {
+    if (typeof type !== 'string' || type === 'type') {
+      return;
+    }
+    if (!requirement[type]) {
+      var req = Object.create(requirement);
+      req.type = type;
+      requirement[type] = req;
+    }
+    return requirement[type];
+  }
+
+  // Requirement type defaults to property
+  requirement.type = 'property';
+
+  // Predefined requirements
+  [ 'function', 'array', 'object',
+    'number', 'boolean', 'string' ].forEach(requirement);
+
+  make.required = requirement;
 
   return Object.freeze(make);
 });
