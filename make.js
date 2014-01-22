@@ -45,9 +45,10 @@
 
     /**
      * Constructor function for Makers.
+     * @param {Object=} opts
      * @return {Object}
      */
-    create: function () {
+    create: function (opts) {
       if (!this.requirementsChecked) {
         validateRequirements(this);
       }
@@ -55,7 +56,7 @@
       var o = Object.create(this.meths);
 
       this.instas.forEach(function (constructor) {
-        constructor.call(o);
+        constructor.call(o, opts || Object.create(null));
       });
 
       return o;
