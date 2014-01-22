@@ -2,7 +2,7 @@ var List = make(function (opt) {
 	this.list = opt.list || [];
 }, {
 	add: function () {
-		while (var i = 0; i < arguments.length; i++) {
+		for (var i = 0; i < arguments.length; i++) {
 			this.list.push(arguments[i]);
 		}
 	},
