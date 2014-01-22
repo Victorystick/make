@@ -4,7 +4,7 @@
  * version   0.1
  */
 
-/*jshint indent: 2, node:true */
+/*jshint indent: 2, node:true, eqnull:true */
 /*global define */
 
 (function (global, definition) {
@@ -26,6 +26,10 @@
 })(this, function () {
   'use strict';
 
+  function toString(thing) {
+    return Object.prototype.toString.call(thing);
+  }
+
   function forOwn(obj, func, scope) {
     for (var key in obj) {
       if (obj.hasOwnProperty(key)) {
@@ -34,9 +38,24 @@
     }
   }
 
-  // Arguments -> Array
-  function toArray(args) {
-    return Array.prototype.slice.call(args);
+  function extend(target, source) {
+    forOwn(source, function (key, val) {
+      target[key] = val;
+    });
+    return target;
+  }
+
+  function toArray(args, x) {
+    if (toString(args) === '[object Arguments]') {
+      return Array.prototype.slice.call(args, x || 0);
+    }
+    if (Array.isArray(args)) {
+      return args;
+    }
+    if (args != null) {
+      return [];
+    }
+    return [args];
   }
 
   var makerMeths = {
@@ -67,26 +86,22 @@
      * @param {...Maker} makers
      */
     inherit: function () {
-      var meths;
-
       toArray(arguments).forEach(function (maker) {
         if (!maker) {
-          throw new Error('Maker undefined!')
+          throw new Error('Maker undefined!');
         }
-        meths = maker.meths;
 
-        forOwn(meths, function (name, meth) {
-          if (!this.meths.hasOwnProperty(name) ||
-              isRequirement(this.meths[name])) {
-            this.meths[name] = meth;
+        forOwn(maker.meths, function (name, meth) {
+          if (!this.hasOwnProperty(name) || isRequirement(this[name])) {
+            this[name] = meth;
           }
-        }, this);
+        }, this.meths);
 
-        maker.instas && maker.instas.forEach(function (func) {
-          if (this.instas.indexOf(func) === -1) {
-            this.instas.unshift(func);
+        maker.instas.forEach(function (func) {
+          if (this.indexOf(func) === -1) {
+            this.unshift(func);
           }
-        }, this);
+        }, this.instas);
       }, this);
 
       return this;
@@ -115,21 +130,32 @@
 
   /**
    * Make a new Maker based on the makerMeths.
-   * @param {Function|Object=} constructor
-   * @param {Object=} methods
+   * @param {...Function|Object}
    * @return {Maker}
    */
-  function make(constructor, methods) {
+  function make() {
     var maker = Object.create(makerMeths);
 
-    if (typeof constructor === 'object') {
-      methods = constructor;
-      constructor = undefined;
-    }
+    maker.meths = {};
+    maker.instas = [];
 
-    maker.meths = methods || {};
-    maker.instas = constructor ? [constructor] : [];
-    maker.definedProps = [];
+    toArray(arguments).forEach(function (param) {
+      if (typeof param === 'object') {
+        extend(maker.methods, param);
+      } else if (typeof param === 'function') {
+        maker.instas.push(param);
+      }
+    });
+
+    if (!maker.meths.hasOwnProperty('$Maker')) {
+      maker.meths.$Maker = maker;
+
+      if (!maker.meths.hasOwnProperty('$clone')) {
+        maker.meths.$clone = function () {
+          return extend(maker.create(), this);
+        };
+      }
+    }
 
     return maker;
   }
