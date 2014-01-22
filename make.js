@@ -26,19 +26,6 @@
 })(this, function () {
   'use strict';
 
-  /**
-   * @param {Array} arr
-   * @param {Function} func
-   * @param {Object=} scope
-   */
-  function forEach(arr, func, scope) {
-    if (!arr.length) {
-      return;
-    }
-
-    arr.forEach(func, scope);
-  }
-
   function forOwn(obj, func, scope) {
     for (var key in obj) {
       if (obj.hasOwnProperty(key)) {
@@ -67,7 +54,7 @@
 
       var o = Object.create(this.meths);
 
-      forEach(this.instas, function (constructor) {
+      this.instas.forEach(function (constructor) {
         constructor.call(o);
       });
 
@@ -94,7 +81,7 @@
           }
         }, this);
 
-        forEach(maker.instas, function (func) {
+        maker.instas && maker.instas.forEach(function (func) {
           if (this.instas.indexOf(func) === -1) {
             this.instas.unshift(func);
           }
@@ -170,15 +157,13 @@
   function validateRequirements(maker) {
     var keys = Object.keys(maker.meths);
 
-    if (keys.length) {
-      forEach(keys, function (key) {
-        var val = this[key];
-        if (isRequirement(val)) {
-          throw new Error("Required " + val.type + " '" +
-            key + "' not available!");
-        }
-      }, maker.meths);
-    }
+    keys.forEach(function (key) {
+      var val = this[key];
+      if (isRequirement(val)) {
+        throw new Error("Required " + val.type + " '" +
+          key + "' not available!");
+      }
+    }, maker.meths);
 
     maker.requirementsChecked = true;
   }
