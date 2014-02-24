@@ -144,6 +144,8 @@
         extend(maker.meths, param);
       } else if (typeof param === 'function') {
         maker.instas.push(param);
+      } else if (Array.isArray(param)) {
+        maker.inherit(param);
       }
     });
 
