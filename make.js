@@ -141,7 +141,7 @@
 
     toArray(arguments).forEach(function (param) {
       if (typeof param === 'object') {
-        extend(maker.methods, param);
+        extend(maker.meths, param);
       } else if (typeof param === 'function') {
         maker.instas.push(param);
       }
